@@ -1,0 +1,15 @@
+name = "playground-api"
+main = "index.js"
+compatibility_date = "2026-11-26"
+workers_dev = true
+
+[vars]
+FRONTEND_ORIGIN = "https://playground-1-cvv.pages.dev"
+
+[[durable_objects.bindings]]
+name = "ROOM_HUB"
+class_name = "RoomHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomHub"]
