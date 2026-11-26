@@ -1,0 +1,73 @@
+/* PLAYGROUND multiplayer room interface additions */
+.room-browser { display: grid; grid-template-columns: minmax(260px, 0.85fr) minmax(320px, 1.15fr); gap: 22px; align-items: start; }
+.room-join-panel, .room-list-panel, .room-dashboard, .room-panel { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.09); border-radius: 22px; padding: 24px; }
+.room-join-panel h3, .room-list-heading h3, .room-empty h3 { margin: 8px 0; color: #f5f4ff; font-size: 21px; }
+.room-join-panel p, .room-list-panel p, .room-dashboard p, .room-panel p { color: #a7a6bb; line-height: 1.55; }
+.room-field-label { display: block; margin: 16px 0 7px; color: #c5c3d7; font-size: 13px; }
+.room-input { display: block; width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid rgba(255,255,255,.13); border-radius: 12px; padding: 13px 14px; outline: none; background: #171729; color: #fff; font: inherit; }
+.room-input:focus { border-color: #8b72fa; box-shadow: 0 0 0 3px rgba(139,114,250,.13); }
+.join-code-row { display: flex; gap: 10px; }
+.join-code-row .primary-button { flex: 0 0 auto; }
+.create-inline { margin-top: 14px; }
+.room-list-heading, .room-panel-heading, .room-dashboard-top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.room-list-heading h3 { margin-bottom: 0; }
+.refresh-button { border: 1px solid rgba(255,255,255,.13); background: transparent; color: #dedcff; border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+.room-empty { display: grid; place-items: center; text-align: center; min-height: 220px; }
+.room-empty > span { font-size: 35px; color: #9a83ff; }
+.room-empty p { margin-top: 0; }
+.room-list { display: grid; gap: 10px; margin-top: 20px; }
+.room-list-card { display: flex; align-items: center; gap: 12px; padding: 13px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 15px; }
+.room-list-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 13px; background: rgba(139,114,250,.13); font-size: 21px; }
+.room-list-info { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.room-list-info strong { color: #f5f4ff; overflow-wrap: anywhere; }
+.room-list-info span { color: #9998ad; font-size: 12px; }
+.room-list-card .secondary-button { padding: 9px 13px; white-space: nowrap; }
+.room-dashboard { display: grid; gap: 18px; }
+.room-dashboard-top h3 { margin: 7px 0 3px; color: #fff; font-size: 25px; }
+.room-dashboard-top p { margin: 0; }
+.room-code-box { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 17px; border: 1px solid rgba(142,119,255,.28); background: rgba(117,91,238,.09); }
+.room-code-box div { display: grid; gap: 5px; }
+.room-code-box span { color: #aaa4d0; font-size: 11px; letter-spacing: .12em; }
+.room-code-box strong { color: #fff; font-size: 25px; letter-spacing: .13em; }
+.room-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.room-panel { padding: 19px; }
+.room-panel-heading { margin-bottom: 16px; }
+.room-panel-heading h4 { margin: 0; color: #f4f2ff; font-size: 17px; }
+.room-panel-heading > span { color: #aaa7c2; font-size: 12px; }
+.room-player-list { display: grid; gap: 10px; }
+.room-player { display: flex; align-items: center; gap: 9px; color: #e9e7f5; min-width: 0; }
+.player-avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex: 0 0 32px; background: linear-gradient(135deg,#6c58d8,#3188c8); color: #fff; font-weight: 700; }
+.room-player strong { overflow-wrap: anywhere; }
+.host-tag, .you-tag { font-size: 9px; letter-spacing: .08em; padding: 4px 6px; border-radius: 5px; background: rgba(151,123,255,.16); color: #c8baff; }
+.you-tag { background: rgba(75,183,145,.14); color: #8ce0c2; }
+.room-game-panel > p, .room-hint { font-size: 13px; color: #9694aa; }
+.room-game-panel .room-input { margin: 12px 0; }
+.full-button { width: 100%; justify-content: center; }
+.host-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+.selected-game-state { display: grid; justify-items: start; gap: 7px; }
+.selected-game-state > span { font-size: 30px; }
+.selected-game-state strong { color: #fff; }
+.selected-game-state p { margin: 0; font-size: 13px; }
+.room-chat-panel { min-width: 0; }
+.chat-messages { display: flex; flex-direction: column; gap: 10px; min-height: 100px; max-height: 230px; overflow-y: auto; padding: 5px 2px 15px; }
+.chat-message { display: grid; gap: 3px; padding: 9px 12px; border-radius: 11px; background: rgba(255,255,255,.04); }
+.chat-message strong { color: #b9aaff; font-size: 12px; }
+.chat-message span { color: #eeedf7; overflow-wrap: anywhere; }
+.chat-form { display: flex; gap: 9px; }
+.chat-form .room-input { flex: 1; }
+.app-toast { position: fixed; z-index: 20; right: 18px; bottom: 18px; display: flex; align-items: center; gap: 14px; max-width: min(480px, calc(100vw - 36px)); padding: 13px 16px; border: 1px solid rgba(160,140,255,.35); border-radius: 13px; background: #211e39; color: #f6f3ff; box-shadow: 0 12px 40px rgba(0,0,0,.28); font-size: 13px; }
+.app-toast button { border: 0; background: transparent; color: #fff; font-size: 20px; cursor: pointer; }
+.warning-toast { bottom: auto; top: 16px; border-color: rgba(239,184,89,.4); background: #302819; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 760px) {
+  .room-browser, .room-dashboard-grid { grid-template-columns: 1fr; }
+  .room-join-panel, .room-list-panel, .room-dashboard { padding: 17px; }
+  .room-code-box { align-items: flex-start; flex-direction: column; }
+  .room-code-box .primary-button { width: 100%; justify-content: center; }
+  .join-code-row { flex-direction: column; }
+  .join-code-row .primary-button { width: 100%; justify-content: center; }
+  .room-dashboard-top { align-items: flex-start; }
+  .room-dashboard-top .secondary-button { white-space: nowrap; }
+  .chat-form { flex-direction: column; }
+  .chat-form .primary-button { width: 100%; justify-content: center; }
+}
