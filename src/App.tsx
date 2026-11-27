@@ -20,8 +20,11 @@ type Room = {
   players: Player[];
   status: "waiting" | "playing";
   selectedGame: string | null;
+  gameState?: ReactionGameState | null;
   createdAt: number;
 };
+type ReactionHit = { playerId: string; playerName: string; reactionMs: number };
+type ReactionGameState = { phase: "countdown"; startAt: number; endsAt: number; hits: ReactionHit[] };
 type ChatMessage = {
   id: string;
   playerId: string;
@@ -47,6 +50,8 @@ export default function App() {
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [gameState, setGameState] = useState<ReactionGameState | null>(null);
+  const [clockNow, setClockNow] = useState(Date.now());
   const socketRef = useRef<WebSocket | null>(null);
 
   const saveNickname = (value: string) => {
@@ -76,6 +81,12 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!gameState) return;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [gameState]);
+
   const connectToRoom = (roomId: string, playerName: string, playerId = "") => {
     if (!API_BASE) {
       setNotice("Backend ünvanı hələ qoşulmayıb. Cloudflare Pages-də VITE_API_URL dəyişənini əlavə et.");
@@ -98,21 +109,28 @@ export default function App() {
           setCurrentRoom(data.room);
           setMyPlayerId(data.playerId);
           setMessages(data.messages || []);
+          setGameState(data.gameState || null);
           setActiveTab("rooms");
           setNotice(`${data.room.name} otağına qoşuldun.`);
           void loadRooms();
         } else if (data.type === "room_update") {
           setCurrentRoom(data.room);
+          setGameState(data.room.gameState || null);
           void loadRooms();
         } else if (data.type === "chat") {
           setMessages((previous) => [...previous, data.message].slice(-50));
         } else if (data.type === "game_started") {
           setCurrentRoom(data.room);
+          setGameState(data.gameState || null);
+          setClockNow(Date.now());
           const game = games.find((item) => item.id === data.gameId);
-          setNotice(`${game?.name || "Oyun"} başladı! Oyun mexanikası növbəti yeniləmədə qoşulacaq.`);
+          setNotice(`${game?.name || "Oyun"} başladı!`);
+        } else if (data.type === "reaction_update") {
+          setGameState(data.gameState || null);
         } else if (data.type === "room_closed") {
           setCurrentRoom(null);
           setMessages([]);
+          setGameState(null);
           setConnected(false);
           setNotice("Otaq bağlandı.");
           void loadRooms();
@@ -211,6 +229,7 @@ export default function App() {
     setCurrentRoom(null);
     setMyPlayerId("");
     setMessages([]);
+    setGameState(null);
     setConnected(false);
     setNotice("Otaqdan çıxdın.");
     void loadRooms();
@@ -227,6 +246,9 @@ export default function App() {
   };
 
   const currentGameName = games.find((game) => game.id === currentRoom?.selectedGame)?.name;
+  const reactionStarted = Boolean(gameState && clockNow >= gameState.startAt);
+  const reactionFinished = Boolean(gameState && clockNow >= gameState.endsAt);
+  const myReaction = gameState?.hits.find((hit) => hit.playerId === myPlayerId);
 
   return (
     <div className="app">
@@ -280,7 +302,7 @@ export default function App() {
             <div className="game-grid">
               {games.map((game) => (
                 <article className={`game-card ${game.color}`} key={game.id}>
-                  <div className="game-top"><div className="game-icon">{game.icon}</div><span className="coming-soon">YAXINDA</span></div>
+                  <div className="game-top"><div className="game-icon">{game.icon}</div><span className={game.id === "reaction-rush" ? "game-available" : "coming-soon"}>{game.id === "reaction-rush" ? "OYNA" : "YAXINDA"}</span></div>
                   <h3>{game.name}</h3><p>{game.type}</p>
                   <div className="game-footer"><span>👥 {game.players} oyunçu</span><span className="game-arrow">↗</span></div>
                 </article>
@@ -332,7 +354,7 @@ export default function App() {
               <div className="room-code-box"><div><span>OTAQ DƏVƏT KODU</span><strong>{currentRoom.id}</strong></div><button className="primary-button" onClick={() => void copyCode()}>Kodu kopyala</button></div>
               <div className="room-dashboard-grid">
                 <section className="room-panel"><div className="room-panel-heading"><h4>Oyunçular</h4><span>{currentRoom.players.length} nəfər</span></div><div className="room-player-list">{currentRoom.players.map((player) => <div className="room-player" key={player.id}><span className="player-avatar">{player.name.slice(0, 1).toUpperCase()}</span><strong>{player.name}</strong>{player.isHost && <span className="host-tag">HOST</span>}{player.id === myPlayerId && <span className="you-tag">SƏN</span>}</div>)}</div></section>
-                <section className="room-panel room-game-panel"><div className="room-panel-heading"><h4>Oyun seçimi</h4><span>{currentRoom.status === "playing" ? "Başlayıb" : "Gözləyir"}</span></div>{currentRoom.status === "playing" ? <div className="selected-game-state"><span>🎮</span><strong>{currentGameName || "Oyun"}</strong><p>Bu oyunun tam mexanikası növbəti oyun yeniləməsində qoşulacaq.</p></div> : <><p>Otaq sahibi oynanacaq mini-oyunu seçə bilər.</p><select className="room-input" value={selectedGame} onChange={(event) => setSelectedGame(event.target.value)}>{games.map((game) => <option value={game.id} key={game.id}>{game.name}</option>)}</select>{currentRoom.hostId === myPlayerId ? <button className="primary-button full-button" onClick={() => sendRoomAction("start_game", { gameId: selectedGame })}>Oyunu başlat ↗</button> : <p className="room-hint">Otaq sahibinin oyunu başlatmasını gözlə.</p>}</>}{currentRoom.hostId === myPlayerId && <div className="host-actions"><button className="secondary-button" onClick={() => sendRoomAction("close_room")}>Otağı bağla</button>{currentRoom.status === "playing" && <button className="secondary-button" onClick={() => sendRoomAction("back_to_lobby")}>Lobbiyə qayıt</button>}</div>}</section>
+                <section className="room-panel room-game-panel"><div className="room-panel-heading"><h4>Oyun seçimi</h4><span>{currentRoom.status === "playing" ? "Başlayıb" : "Gözləyir"}</span></div>{currentRoom.status === "playing" ? <div className="selected-game-state"><span>🎮</span><strong>{currentGameName || "Oyun"}</strong>{currentRoom.selectedGame === "reaction-rush" && gameState ? <div className="reaction-game"><div className="reaction-status">{reactionFinished ? "RAUND BİTDİ" : reactionStarted ? "İNDİ BAS!" : "YAŞIL SİQNALI GÖZLƏ"}</div><button className="reaction-hit-button" disabled={!connected || !reactionStarted || reactionFinished || Boolean(myReaction)} onClick={() => sendRoomAction("reaction_hit")}>{myReaction ? "CAVAB QEYD OLUNDU" : reactionFinished ? "RAUND BİTDİ" : reactionStarted ? "BAS!" : "GÖZLƏ..."}</button><p>{!reactionStarted ? `Başlamağa ${Math.max(0, (gameState.startAt - clockNow) / 1000).toFixed(1)} saniyə` : reactionFinished ? "Nəticələr:" : "Ən sürətli reaksiya qalibdir."}</p><div className="reaction-results">{gameState.hits.slice().sort((x, y) => x.reactionMs - y.reactionMs).map((hit, index) => <div key={hit.playerId}><strong>{index + 1}. {hit.playerName}</strong><span>{hit.reactionMs} ms</span></div>)}</div>{reactionFinished && currentRoom.hostId === myPlayerId && <button className="secondary-button" onClick={() => sendRoomAction("back_to_lobby")}>Yenidən oynamaq üçün lobbiyə qayıt</button>}</div> : <p>Bu oyunun mexanikası hələ hazırlanmayıb.</p>}</div> : <><p>Otaq sahibi oynanacaq mini-oyunu seçə bilər.</p><select className="room-input" value={selectedGame} onChange={(event) => setSelectedGame(event.target.value)}>{games.map((game) => <option value={game.id} key={game.id} disabled={game.id !== "reaction-rush"}>{game.name}{game.id !== "reaction-rush" ? " — Yaxında" : ""}</option>)}</select>{currentRoom.hostId === myPlayerId ? <button className="primary-button full-button" onClick={() => sendRoomAction("start_game", { gameId: selectedGame })}>Oyunu başlat ↗</button> : <p className="room-hint">Otaq sahibinin oyunu başlatmasını gözlə.</p>}</>}{currentRoom.hostId === myPlayerId && <div className="host-actions"><button className="secondary-button" onClick={() => sendRoomAction("close_room")}>Otağı bağla</button>{currentRoom.status === "playing" && <button className="secondary-button" onClick={() => sendRoomAction("back_to_lobby")}>Lobbiyə qayıt</button>}</div>}</section>
               </div>
               <section className="room-panel room-chat-panel"><div className="room-panel-heading"><h4>Otaq söhbəti</h4><span>Canlı çat</span></div><div className="chat-messages">{messages.length === 0 ? <p className="room-hint">Hələ mesaj yoxdur. İlk mesajı sən yaz.</p> : messages.map((message) => <div className="chat-message" key={message.id}><strong>{message.playerName}</strong><span>{message.text}</span></div>)}</div><form className="chat-form" onSubmit={sendChat}><input className="room-input" value={chatText} maxLength={300} onChange={(event) => setChatText(event.target.value)} placeholder="Mesaj yaz..." /><button className="primary-button" type="submit" disabled={!connected || !chatText.trim()}>Göndər</button></form></section>
             </div>
@@ -344,7 +366,7 @@ export default function App() {
         <section className="bottom-banner"><div><span className="section-kicker">SƏNİN OTAĞIN, SƏNİN QAYDALARIN</span><h2>Dostlarını topla. Oyuna başla.</h2></div><button className="primary-button" onClick={() => setShowCreate(true)}>İndi başla ↗</button></section>
       </main>
 
-      <footer><a className="brand" href="#top"><span className="brand-icon">P</span> PLAY<span>GROUND</span></a><p>Birlikdə oynamaq daha gözəldir.</p><span>© 2026 PLAYGROUND</span></footer>
+      <footer><a className="brand" href="#top"><span className="brand-icon">P</span> PLAY<span>GROUND</span></a><p>Birlikdə oynamaq daha gözəldir.</p><span>© 2026 PLAYGROUND <b className="footer-he">H E</b></span></footer>
 
       {!API_BASE && <div className="app-toast warning-toast">Backend ünvanı qoşulmayıb. Cloudflare Pages-də VITE_API_URL əlavə edilməlidir.</div>}
       {notice && <div className="app-toast" role="status"><span>{notice}</span><button onClick={() => setNotice("")} aria-label="Bildirişi bağla">×</button></div>}
