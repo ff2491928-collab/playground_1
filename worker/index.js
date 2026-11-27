@@ -52,6 +52,7 @@ function publicRoom(room) {
     })),
     status: room.status,
     selectedGame: room.selectedGame,
+    gameState: room.gameState || null,
     createdAt: room.createdAt,
   };
 }
@@ -200,6 +201,7 @@ export class RoomHub extends DurableObject {
       playerId: joined.playerId,
       room: publicRoom(joined.room),
       messages: joined.room.messages,
+      gameState: joined.room.gameState || null,
     }));
     this.broadcast(roomId, { type: "room_update", room: publicRoom(joined.room) });
 
@@ -243,21 +245,41 @@ export class RoomHub extends DurableObject {
         return { broadcast: { type: "chat", message: chatMessage } };
       }
 
+      if (message.type === "reaction_hit") {
+        if (room.status !== "playing" || room.selectedGame !== "reaction-rush" || !room.gameState) {
+          return { error: "Reaction Rush hazırda aktiv deyil." };
+        }
+        const now = Date.now();
+        if (now < room.gameState.startAt) return { error: "Hələ tezdir! Yaşıl siqnalı gözlə." };
+        if (now > room.gameState.endsAt) return { error: "Bu raund artıq bitib." };
+        if (room.gameState.hits.some((hit) => hit.playerId === player.id)) {
+          return { error: "Bu raundda artıq reaksiya vermisən." };
+        }
+        room.gameState.hits.push({ playerId: player.id, playerName: player.name, reactionMs: now - room.gameState.startAt });
+        await this.ctx.storage.put(key, room);
+        return { broadcast: { type: "reaction_update", gameState: room.gameState } };
+      }
+
       if (["start_game", "back_to_lobby", "close_room"].includes(message.type)) {
         if (player.id !== room.hostId) return { error: "Bu əməliyyatı yalnız otaq sahibi edə bilər." };
 
         if (message.type === "start_game") {
           const allowedGames = ["reaction-rush", "brain-battle", "draw-guess", "secret-role"];
           if (!allowedGames.includes(message.gameId)) return { error: "Oyun seçimi düzgün deyil." };
+          if (room.players.length < 2) return { error: "Oyuna başlamaq üçün ən azı 2 oyunçu lazımdır." };
           room.status = "playing";
           room.selectedGame = message.gameId;
+          room.gameState = message.gameId === "reaction-rush"
+            ? { phase: "countdown", startAt: Date.now() + 3500, endsAt: Date.now() + 18500, hits: [] }
+            : null;
           await this.ctx.storage.put(key, room);
-          return { broadcast: { type: "game_started", gameId: room.selectedGame, room: publicRoom(room) } };
+          return { broadcast: { type: "game_started", gameId: room.selectedGame, gameState: room.gameState, room: publicRoom(room) } };
         }
 
         if (message.type === "back_to_lobby") {
           room.status = "waiting";
           room.selectedGame = null;
+          room.gameState = null;
           await this.ctx.storage.put(key, room);
           return { broadcast: { type: "room_update", room: publicRoom(room) } };
         }
